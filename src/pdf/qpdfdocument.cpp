@@ -893,6 +893,60 @@ QPdfSelection QPdfDocument::getAllText(int page)
     return QPdfSelection(text, bounds, hull, 0, count);
 }
 
+/*!
+    Returns a QVector of QPdfSelection, each describing one fragment of text.
+*/
+QVector<QPdfSelection> QPdfDocument::getAllWords(int page, int maxLength, const QString &sep){
+     if (page < 0 || maxLength < 0)
+        return QVector<QPdfSelection>();
+        
+    const QPdfMutexLocker lock;
+    FPDF_PAGE pdfPage = FPDF_LoadPage(d->doc, page);
+    double pageHeight = FPDF_GetPageHeight(pdfPage);
+    FPDF_TEXTPAGE textPage = FPDFText_LoadPage(pdfPage);
+    int pageCount = FPDFText_CountChars(textPage);
+    int charCount = FPDFText_CountChars(textPage);
+    int startIndex = 0;
+    
+    if (startIndex >= pageCount)
+        return QVector<QPdfSelection>();
+
+    
+    QVector<QPdfSelection> selections;
+    while(startIndex < charCount){
+        QVector<QPolygonF> bounds;
+        QRectF hull;
+        QString text;
+        
+
+        text = d->getText(textPage, startIndex, maxLength);
+        QString word = text.split(QRegExp("\\s+")).first();
+        if(word.isEmpty()){
+            startIndex += 1;
+            continue;
+        }
+
+        int rectCount = FPDFText_CountRects(textPage, startIndex, word.length()+1);
+        for (int i = 0; i < rectCount; ++i) {
+            double l, r, b, t;
+            FPDFText_GetRect(textPage, i, &l, &t, &r, &b);
+            QRectF rect(l, pageHeight - t, r - l, t - b);
+            if (hull.isNull())
+                hull = rect;
+            else
+                hull = hull.united(rect);
+            bounds << QPolygonF(rect);
+        }
+        
+        if (bounds.isEmpty())
+            hull = QRectF(d->getCharPosition(textPage, pageHeight, startIndex), QSizeF());
+        selections << QPdfSelection(word, bounds, hull, startIndex, startIndex + word.length() + 1);
+        startIndex += word.length() + 1;
+    }
+
+    return selections;
+}
+
 QT_END_NAMESPACE
 
 #include "moc_qpdfdocument.cpp"

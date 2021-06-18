@@ -115,6 +115,7 @@ public:
 
     Q_INVOKABLE QPdfSelection getSelection(int page, QPointF start, QPointF end);
     Q_INVOKABLE QPdfSelection getSelectionAtIndex(int page, int startIndex, int maxLength);
+    Q_INVOKABLE QVector<QPdfSelection> getAllWords(int page, int maxLength, const QString &sep);
     Q_INVOKABLE QPdfSelection getAllText(int page);
 
 Q_SIGNALS:
